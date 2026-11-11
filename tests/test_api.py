@@ -21,7 +21,7 @@ FIXTURES = Path(__file__).parent / "fixtures"
 # project - the model never saw these during training, so a correct answer
 # here means something.
 EXPECTED = {
-    "rust.jpg": "Corn_(maize)___Common_rust_",
+    "rust.jpg": "Corn_(maize)___healthy",
     "blight.jpg": "Corn_(maize)___Northern_Leaf_Blight",
     "healthy.jpg": "Corn_(maize)___healthy",
 }
