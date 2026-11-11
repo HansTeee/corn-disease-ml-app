@@ -217,7 +217,9 @@ FAILED tests/test_api.py::test_predict_returns_correct_top_class[rust.jpg-Corn_(
 FAILED tests/test_api.py::test_predict_handles_rgba_png - AssertionError: assert 'Corn_(maize)___Common_rust_' == 'Corn_(maize)___healthy'
 ```
 
-3 failed, 11 passed. The `test` check went red, and GitHub reported the PR's merge state as `BLOCKED`. The PR was closed without merging. Open the PR to see the failed checks.
+3 failed, 11 passed. The `test` check went red, and GitHub reported the PR's merge state as `BLOCKED`. The PR was closed without merging.
+
+![PR #1 Checks tab: in the pull_request run, lint passed, test failed, docker-build passed](docs/ci-blocked.png)
 
 ---
 
