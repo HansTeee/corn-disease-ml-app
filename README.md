@@ -196,7 +196,7 @@ docker run -p 7860:7860 ml-app
 
 ## CI
 
-**[`ci.yml`](.github/workflows/ci.yml)** runs on every push and pull request:
+**[`ci.yml`](.github/workflows/ci.yml)** runs on every pull request and every push to `main`:
 
 | Job | What it does | Why |
 |---|---|---|
@@ -210,7 +210,15 @@ docker run -p 7860:7860 ml-app
 
 ### Proof that a failing test blocks a merge
 
-TODO: add the screenshot of the demo PR where the `test` job failed and merging was blocked.
+[PR #1](https://github.com/HansTeee/corn-disease-ml-app/pull/1) deliberately broke one test: it changed the expected class for `rust.jpg` (a held-out Common rust image) to `healthy`. The model still answered correctly, so the test failed. The output below is from that PR's CI run:
+
+```
+FAILED tests/test_api.py::test_model_info_has_expected_keys - AssertionError: assert ['Corn_(maize...e)___healthy'] == ['Corn_(maize...e)___healthy']
+FAILED tests/test_api.py::test_predict_returns_correct_top_class[rust.jpg-Corn_(maize)___healthy] - AssertionError: assert 'Corn_(maize)___Common_rust_' == 'Corn_(maize)___healthy'
+FAILED tests/test_api.py::test_predict_handles_rgba_png - AssertionError: assert 'Corn_(maize)___Common_rust_' == 'Corn_(maize)___healthy'
+```
+
+3 failed, 11 passed. The `test` check went red, and GitHub reported the PR's merge state as `BLOCKED`. The PR was closed without merging. Open the PR to see the failed checks.
 
 ---
 
@@ -224,7 +232,8 @@ TODO: add the screenshot of the demo PR where the `test` job failed and merging 
 | Container start → healthy | 12–18 s (model load 3.2 s of that) | local |
 | Warm prediction (server-side) | ~190–300 ms | local container logs |
 | Test suite | 7–14 s for 14 tests (~8 s is loading TensorFlow + the model once) | local |
-| CI run time | TODO | GitHub Actions |
+| CI run time (warm cache) | ~1 min 40 s total: lint 11 s, then test 52 s and docker-build 1 min 21 s in parallel | GitHub Actions ([PR #2 run](https://github.com/HansTeee/corn-disease-ml-app/actions/runs/43012549661)) |
+| CI run time (empty cache) | ~5 min 50 s (docker-build 5 min 31 s re-downloads everything) | GitHub Actions, first run |
 
 ---
 
