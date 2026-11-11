@@ -4,7 +4,6 @@ A MobileNetV2 classifier for corn leaf diseases, built as a real service: a **Fa
 
 ![CI](https://github.com/HansTeee/corn-disease-ml-app/actions/workflows/ci.yml/badge.svg)
 
-<!-- TODO: save a screenshot of the running app as docs/screenshot.png -->
 ![Screenshot of the app: an uploaded leaf, the top prediction and all three class probabilities](docs/screenshot.png)
 
 ---
