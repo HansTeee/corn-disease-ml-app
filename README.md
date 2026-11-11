@@ -1,43 +1,23 @@
----
-title: Corn Leaf Disease Classifier
-emoji: 🌽
-colorFrom: green
-colorTo: yellow
-sdk: docker
-app_port: 7860
-pinned: false
-short_description: FastAPI + Streamlit corn leaf disease classifier
----
-
-<!--
-  The block above is Hugging Face Spaces configuration (GitHub shows it as a
-  small table). sdk: docker + app_port: 7860 tell the Space to build the
-  Dockerfile and route traffic to port 7860. Don't remove it: the deploy
-  workflow pushes this README to the Space.
--->
-
 # 🌽 Corn Leaf Disease Classifier: production stack
 
-A MobileNetV2 classifier for corn leaf diseases, deployed as a real service: a **FastAPI** inference API, a **Streamlit** frontend that calls it over HTTP, packaged with **Docker**, tested and deployed by **GitHub Actions** to **Hugging Face Spaces**.
+A MobileNetV2 classifier for corn leaf diseases, built as a real service: a **FastAPI** inference API, a **Streamlit** frontend that calls it over HTTP, packaged with **Docker**, and tested on every push by **GitHub Actions**.
 
-**Live demo:** TODO(you): https://huggingface.co/spaces/USERNAME/SPACE-NAME
+![CI](https://github.com/HansTeee/corn-disease-ml-app/actions/workflows/ci.yml/badge.svg)
 
-![CI](https://github.com/USERNAME/REPO/actions/workflows/ci.yml/badge.svg)
-
-<!-- TODO(you): save a screenshot of the live app as docs/screenshot.png -->
+<!-- TODO: save a screenshot of the running app as docs/screenshot.png -->
 ![Screenshot of the app: an uploaded leaf, the top prediction and all three class probabilities](docs/screenshot.png)
 
 ---
 
 ## Why a classifier and not the RAG chatbot
 
-This project is about the **pipeline** (tests, CI, containers, automated deploys), so I picked the model that makes a pipeline meaningful.
+This project is about the **pipeline** (tests, CI, containers), so I picked the model that makes a pipeline meaningful.
 
 - **Deterministic outputs can be tested.** The same image always produces the same probabilities, so CI can assert `predicted_class == "Corn_(maize)___Common_rust_"` on a known rust leaf. That's a real pass/fail gate. A regression in preprocessing, a wrong `class_names.json` or a broken model file turns CI red.
 - **LLM outputs can't be tested the same way.** A RAG answer is worded differently each run, and "is this answer correct?" has no `assert`. You end up with string-contains checks that pass on wrong answers, or an LLM grading an LLM: slow, costly and itself non-deterministic.
 - **No API quota means CI isn't flaky.** The model ships inside the repo, so tests need no network, no API key and no rate limit. A red build always means the code is broken, never "the provider was slow today". Flaky CI trains people to ignore red builds, which defeats the point.
 
-A RAG app is a fine product. It's the wrong choice for demonstrating a CI/CD pipeline whose job is to block bad releases.
+A RAG app is a fine product. It's the wrong choice for demonstrating a CI pipeline whose job is to block bad code.
 
 ---
 
@@ -47,7 +27,7 @@ A RAG app is a fine product. It's the wrong choice for demonstrating a CI/CD pip
 
 ```mermaid
 flowchart LR
-    U["🧑 Browser"] -->|"HTTPS"| HF["Hugging Face Spaces<br/>routes to port 7860"]
+    U["🧑 Browser"] -->|"http://localhost:7860"| S
     subgraph C["Docker container (one container, two processes)"]
         direction LR
         S["Streamlit UI<br/>0.0.0.0:7860<br/><i>no model, no TensorFlow import</i>"]
@@ -58,29 +38,28 @@ flowchart LR
         M -->|"3 probabilities"| A
         A -->|"JSON"| S
     end
-    HF --> S
 ```
 
 The UI never touches the model. It's just an HTTP client of the API, like `curl` or a mobile app would be. That's why the model could be moved to its own server by changing one environment variable (`API_URL`).
 
-### CI/CD: what happens when you `git push`
+### CI: what happens when you `git push`
 
 ```mermaid
 flowchart LR
-    P["git push<br/>(any branch or PR)"] --> GA["GitHub Actions:<br/>CI workflow"]
+    P["git push<br/>or pull request"] --> GA["GitHub Actions:<br/>CI workflow (ci.yml)"]
     subgraph CI["ci.yml"]
         direction LR
         L["lint<br/>ruff check"] --> T["test<br/>pytest on the real model"]
         L --> D["docker-build<br/>build + wait for healthy"]
     end
     GA --> L
-    T --> G{"branch is main<br/>AND every job passed?"}
+    T --> G{"every job passed?"}
     D --> G
-    G -->|"no"| X["❌ stop<br/>nothing deployed"]
-    G -->|"yes"| DEP["deploy.yml<br/>git push --force to the HF Space"]
-    DEP --> R["Space rebuilds<br/>the Docker image"]
-    R --> LIVE["✅ live"]
+    G -->|"no"| X["❌ red check<br/>PR can't be merged into main"]
+    G -->|"yes"| OK["✅ green check<br/>PR can be merged"]
 ```
+
+Branch protection on `main` makes `lint`, `test` and `docker-build` required checks, so code that fails any of them can't reach `main`.
 
 ---
 
@@ -89,26 +68,28 @@ flowchart LR
 | Component | Version | Why this choice |
 |---|---|---|
 | Python | 3.13 | The version the model was trained with. numpy 2.5.4 needs ≥ 3.12. |
-| TensorFlow (CPU) | `tensorflow-cpu` 2.21.0 | Free hosting has no GPU. The GPU build adds several GB of CUDA libraries that would never run. |
+| TensorFlow (CPU) | `tensorflow-cpu` 2.21.0 | Typical container hosts have no GPU. The GPU build adds several GB of CUDA libraries that would never run. |
 | Keras | 3.15.1 | Pinned to the version that saved the `.keras` file, so it loads identically. |
 | Model | MobileNetV2 (transfer learning), 2.26 M params, 9.6 MB | Small and fast on CPU. Preprocessing is built into the model as a layer, so the server can't forget it. |
 | FastAPI | 0.162.4 | Request validation, typed responses and auto-generated `/docs`, all from type hints. |
 | Uvicorn | 0.54.0 | The ASGI server that runs FastAPI. |
 | Streamlit | 1.67.0 | A full UI in about 200 lines of Python, without writing JavaScript. |
 | Docker base | `python:3.13-slim` | Debian/glibc, so TensorFlow and numpy install from prebuilt wheels. Alpine (musl) would compile them from source. |
-| CI/CD | GitHub Actions | Free for public repos and lives next to the code. |
-| Hosting | Hugging Face Spaces (Docker SDK) | Free CPU hosting for a Docker container, deployed with `git push`. |
+| CI | GitHub Actions | Free for public repos and lives next to the code. |
 | Lint / tests | ruff 0.17.4, pytest 9.2.0 | ruff lints the whole repo in milliseconds; pytest with FastAPI's `TestClient` needs no running server. |
+| Large files | Git LFS | Keeps the model and test images out of normal git history; CI checks them out with `lfs: true`. |
 
 ---
 
 ## The single-container decision
 
-**Hugging Face Spaces exposes exactly one port per Space (7860).** A two-service setup (API container + UI container) can't be reached from outside there. So the deployed image runs both processes in one container:
+Many container hosts (Hugging Face Spaces, Google Cloud Run, Render's free tier) expose **exactly one port per app**. A two-service setup (API container + UI container) can't be reached from outside there. So the main image runs both processes in one container:
 
 1. `start.sh` starts **uvicorn** in the background on `127.0.0.1:8000`. That's localhost only, because only the UI needs it.
 2. It **polls `/health`** until the API answers (no blind `sleep 10`: model load time varies by machine).
 3. It `exec`s **Streamlit** in the foreground on `0.0.0.0:7860`. If Streamlit dies, the container exits and gets restarted instead of hanging half-alive.
+
+The image also runs as a non-root user with UID 1000, which several hosts require.
 
 For local development, **[`docker-compose.yml`](docker-compose.yml) runs the same image as two separate services**, `api` and `ui`, on a shared network. The UI finds the API by service name (`API_URL=http://api:8000`). That's how you'd deploy on a platform where each service scales independently. Both setups use one image and one codebase; only the start command differs.
 
@@ -170,6 +151,13 @@ curl -X POST http://127.0.0.1:8000/predict                         -> 422
 
 ## Local development (Windows CMD)
 
+Install [Git LFS](https://git-lfs.com) and run `git lfs install` **before cloning**, or `models/` will contain small pointer files instead of the model.
+
+```bat
+git clone https://github.com/HansTeee/corn-disease-ml-app.git
+cd corn-disease-ml-app
+```
+
 **Without Docker** (fastest edit-run loop):
 
 ```bat
@@ -196,7 +184,7 @@ docker compose up --build
 docker compose down
 ```
 
-**Single container: exactly what Hugging Face runs:**
+**Single container: the deployable image:**
 
 ```bat
 docker build -t ml-app .
@@ -204,11 +192,9 @@ docker run -p 7860:7860 ml-app
 :: UI: http://localhost:7860   (the API is internal to the container)
 ```
 
-Git LFS must be installed (`git lfs install`) before cloning, or `models/` will contain small pointer files instead of the model.
-
 ---
 
-## CI/CD
+## CI
 
 **[`ci.yml`](.github/workflows/ci.yml)** runs on every push and pull request:
 
@@ -220,18 +206,11 @@ Git LFS must be installed (`git lfs install`) before cloning, or `models/` will 
 
 `test` and `docker-build` run in parallel after `lint`. pip downloads are cached (`actions/setup-python` with `cache: pip`) and Docker layers are cached in GitHub's cache, so a code-only change doesn't re-download TensorFlow.
 
-**[`deploy.yml`](.github/workflows/deploy.yml)** runs only when CI **finishes successfully** for a **push to `main`**. It checks out the exact commit CI tested (with full history: HF rejects shallow clones), adds the Space as a git remote using the `HF_TOKEN` secret, and force-pushes. The Space then rebuilds the Docker image.
+**Branch protection:** `main` requires a pull request, and the `lint`, `test` and `docker-build` checks must pass before it can be merged.
 
-### Proof that a failing test blocks deploy
+### Proof that a failing test blocks a merge
 
-TODO(you): paste the result of the failing-test experiment, e.g. a link to the red CI run, plus a note that the "Deploy to Hugging Face Space" run was skipped and the live app stayed on the previous version.
-
-### One-time setup
-
-1. **Hugging Face:** create a Space with SDK **Docker**. Create a token at <https://huggingface.co/settings/tokens> with **write** access, ideally a fine-grained token limited to that one Space.
-2. **GitHub repo → Settings → Secrets and variables → Actions:**
-   - **Secrets** tab → *New repository secret*: name `HF_TOKEN`, value = the token.
-   - **Variables** tab → *New repository variable*: name `HF_SPACE`, value = `your-hf-username/your-space-name`.
+TODO: add the screenshot of the demo PR where the `test` job failed and merging was blocked.
 
 ---
 
@@ -245,9 +224,7 @@ TODO(you): paste the result of the failing-test experiment, e.g. a link to the r
 | Container start → healthy | 12–18 s (model load 3.2 s of that) | local |
 | Warm prediction (server-side) | ~190–300 ms | local container logs |
 | Test suite | 7–14 s for 14 tests (~8 s is loading TensorFlow + the model once) | local |
-| CI run time | TODO(you) | GitHub Actions |
-| Cold start on HF after sleep | TODO(you) | free CPU Space |
-| Push → live | TODO(you) | GitHub push to Space serving the new version |
+| CI run time | TODO | GitHub Actions |
 
 ---
 
@@ -256,8 +233,8 @@ TODO(you): paste the result of the failing-test experiment, e.g. a link to the r
 - **Lab photos, not field photos.** The model was trained on PlantVillage: single detached leaves on a plain board under even light. It scores **97.1%** on the held-out PlantVillage test set, but only **50% (5/10)** on real-world corn photos from Wikimedia Commons (44% on all 25 eligible photos; random guessing is 33%). It found just 2 of 15 real-world Common rust photos, usually calling them Northern Leaf Blight at over 90% confidence.
 - **No "unknown" class.** Every image gets one of the three labels, with probabilities summing to 100%. A portrait of a person scored Northern Leaf Blight 52.2% (the UI's low-confidence warning fired). The matplotlib logo scored **Northern Leaf Blight 96.3%** (no warning). Low confidence is a useful hint, but high confidence doesn't mean the image is a corn leaf.
 - **The API can't scale independently of the UI.** In the single container, more prediction capacity means more copies of the whole app. `docker-compose.yml` shows the split version.
-- **Cold starts.** A free Space sleeps when idle; the first visitor afterwards waits for the container to boot and the model to load.
-- **No authentication and no rate limiting.** Anyone with the URL can call the API as often as they like. Uploads are capped at 10 MB and 25 megapixels, but that's the only protection.
+- **Not hosted publicly.** CI proves every commit builds, passes the tests and starts healthy, but nothing deploys it automatically. Running it means `docker run` locally or on a container host.
+- **No authentication and no rate limiting.** Anyone who can reach the app can call the API as often as they like. Uploads are capped at 10 MB and 25 megapixels, but that's the only protection.
 - **No monitoring or drift detection.** Predictions are logged, but nothing tracks confidence or class distribution over time, so a shift in what people upload would go unnoticed.
 
 ---
@@ -269,10 +246,10 @@ api/            FastAPI app: main.py (HTTP), inference.py (model), schemas.py (r
 ui/app.py       Streamlit frontend; calls the API over HTTP, never imports the model
 models/         corn_disease_model.keras, class_names.json, metrics.json  (Git LFS)
 tests/          test_api.py + fixtures/ (one held-out test image per class)
-Dockerfile      multi-stage, single container for HF Spaces
+Dockerfile      multi-stage, single container (both processes, port 7860)
 start.sh        starts the API, waits for /health, then Streamlit
 docker-compose.yml   local two-service setup
-.github/workflows/   ci.yml, deploy.yml
+.github/workflows/   ci.yml
 ```
 
 Model training, the leakage-safe data split and the shortcut analysis live in the separate training project (`plant-disease-classifier`).

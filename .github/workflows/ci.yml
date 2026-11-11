@@ -3,8 +3,9 @@
 #   lint ──┬── test           (pytest against the real model)
 #          └── docker-build   (build the image AND check it becomes healthy)
 #
-# If ANY job fails, the whole workflow is marked failed, and deploy.yml
-# (which waits for this workflow) will not deploy.
+# If ANY job fails, the whole workflow is marked failed. With branch
+# protection on main (lint, test and docker-build as required checks), a pull
+# request with a red check can't be merged.
 name: CI
 
 on:
