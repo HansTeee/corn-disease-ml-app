@@ -1,4 +1,4 @@
-# CI: runs on every push (any branch) and every pull request.
+# CI: runs on every pull request, and on every push to main.
 #
 #   lint ──┬── test           (pytest against the real model)
 #          └── docker-build   (build the image AND check it becomes healthy)
@@ -8,8 +8,13 @@
 # request with a red check can't be merged.
 name: CI
 
+# WHY push is limited to main: with a bare `push:` trigger, pushing to a branch
+# that has an open PR starts CI TWICE (once for the push, once for the PR),
+# using double the minutes for the same code. PR branches are covered by
+# `pull_request`; `push` to main keeps the badge and main's history checked.
 on:
   push:
+    branches: [main]
   pull_request:
 
 # If you push twice quickly to the same branch, cancel the older run.
@@ -113,4 +118,8 @@ jobs:
           done
           docker logs smoke
           test "$status" = "healthy"
-          curl -fsS http://localhost:7860/_stcore/health   # Streamlit answers on the public port
+          # Streamlit answers on the public port. WHY retry: "healthy" only
+          # means the API is up. start.sh launches Streamlit right AFTER that,
+          # so for a second or two port 7860 isn't listening yet and curl gets
+          # "connection reset". Retrying for up to ~30 s removes that race.
+          curl -fsS --retry 15 --retry-delay 2 --retry-all-errors http://localhost:7860/_stcore/health
