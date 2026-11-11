@@ -1,0 +1,16 @@
+# Runtime dependencies (what the Docker image installs).
+# WHY exact pins (==): the model was trained with these versions. An unpinned
+# install could pull a newer Keras that loads the .keras file differently, and
+# "it worked yesterday" bugs are the worst kind to debug.
+#
+# tensorflow-cpu, not tensorflow: free hosting has no GPU, and the GPU build
+# drags in ~2 GB of CUDA libraries that would never be used.
+tensorflow-cpu==2.21.0
+keras==3.15.1
+numpy==2.5.4
+pillow==13.0.0
+fastapi==0.162.4
+uvicorn==0.54.0
+python-multipart==0.0.33
+streamlit==1.67.0
+requests==2.34.2

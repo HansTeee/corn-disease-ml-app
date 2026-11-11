@@ -1,0 +1,21 @@
+# Everything listed here is NOT sent to Docker when building.
+# WHY: (1) a smaller build context makes builds faster - .venv alone is
+# gigabytes; (2) files like .env can never accidentally end up baked into an
+# image layer, where anyone who pulls the image could read them.
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.git/
+.gitignore
+.gitattributes
+tests/
+docs/
+data/
+*.md
+.env
+.env.*
+docker-compose.yml
+requirements-dev.txt
+pytest.ini

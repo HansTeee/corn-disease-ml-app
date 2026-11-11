@@ -1,0 +1,13 @@
+# Shell scripts must keep Linux (LF) line endings even when checked out on
+# Windows - otherwise the container fails with "/bin/sh^M: not found".
+*.sh text eol=lf
+
+# Binary files go in Git LFS (Large File Storage).
+# WHY: Hugging Face rejects pushes that contain binary files stored as normal
+# git objects. LFS keeps a small text "pointer" in git and stores the real file
+# separately. GitHub supports LFS too, and CI checks out with `lfs: true`.
+*.keras filter=lfs diff=lfs merge=lfs -text
+*.jpg filter=lfs diff=lfs merge=lfs -text
+*.jpeg filter=lfs diff=lfs merge=lfs -text
+*.JPG filter=lfs diff=lfs merge=lfs -text
+*.png filter=lfs diff=lfs merge=lfs -text

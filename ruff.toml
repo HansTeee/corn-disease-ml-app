@@ -1,0 +1,16 @@
+# Ruff = a very fast Python linter. CI runs `ruff check .` on every push.
+# WHY list the rules explicitly: ruff's defaults change between versions. An
+# explicit list (plus the pinned version in requirements-dev.txt) means your
+# machine and CI always flag exactly the same things.
+line-length = 120
+target-version = "py313"   # same Python as the Dockerfile
+
+[lint]
+select = [
+    "E", "W",  # pycodestyle: basic style errors
+    "F",       # pyflakes: unused imports/variables, undefined names (real bugs)
+    "I",       # import sorting
+    "B",       # bugbear: common Python gotchas
+    "UP",      # pyupgrade: use modern syntax for our Python version
+    "BLE",     # flag bare `except Exception` so every one is deliberate
+]
