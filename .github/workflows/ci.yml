@@ -87,13 +87,13 @@ jobs:
         with:
           lfs: true      # the image COPYs models/, which lives in LFS
 
-      - uses: docker/setup-buildx-action@v3
+      - uses: docker/setup-buildx-action@v4
 
       # Build only, never push from CI. type=gha stores Docker's layer cache in
       # GitHub's cache, so the ~2 GB dependency layer is reused when only code
       # changed (the same COPY-requirements-first trick, but across CI runs).
       - name: Build image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           push: false
